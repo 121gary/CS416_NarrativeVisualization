@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="lorem ipsum"/>
+        <meta property="og:title" content="Housing Prices in the US" />
+        <!-- <script src='https://d3js.org/d3.v5.min.js'></script> -->
+        <script src="https://d3js.org/d3.v7.js"></script>
+        <!-- <script src="annotations.js"></script> -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.js"></script>
+        <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+        <title>Housing Prices in the US</title>
+        <!-- <link rel="stylesheet" type="text/css" href="CSS/custom.css" media="screen"> -->
+
+    </head>
+    <body onload="init()">
+        <div>
+            <h1>Housing Prices in the US</h1>
+            <p>Let's take a look at historical housing prices in the United States, adjust them by inflation, relate them to interest rates, and compare them to rental prices.
+                All data is publicly available from Zillow and the Federal Reserve Bank of St. Louis.</p>
+            <h2>A Visualization of Home Value Data</h2>
+            <p id='caption'></p>
+            <p id="action"></p>
+            <div id="geoDropdown"></div>
+            <button id='actionButton' onclick="nextClick()">Next</button>
+        </div>
+        <div><svg id="scene" width=100% height=650></svg></div>
+        </svg>
+        <script>
+            let sceneId = 1;
+            let numScene = 4;
+            let data;
+            let dataLength;
+            let geoOptions;
+            let margin = 50;
+            let height = 500;
+            let width = 750;
+            async function init() {
+                data = await d3.csv('/US_homePrices.csv');
+                dataLength = data.length;
+                geoOptions = data.columns;
+                geoOptions.shift();
+                geoOptions.shift();
+                geoOptions.shift();
+                geoOptions.shift();
+                geoOptions.shift();
+                initScene1();
+            }
+            function nextClick() {
+                sceneId++;
+                d3.select("svg").selectAll("*").remove();
+                d3.select('#geoDropdown').selectAll("*").remove();
+                if(sceneId > numScene) {
+                    console.log(`clicked, back to scene 1`)
+                    sceneId = 1
+                }
+                else {
+                    console.log(`clicked, now it's scene ${sceneId} out of ${numScene}`);
+                }
+                switch (sceneId) {
+                    case 1:
+                        console.log(`case 1`)
+                        initScene1();
+                        break;
+                    case 2:
+                        console.log(`case 2`)
+                        initScene2();
+                        break;
+                    case 3:
+                        console.log(`case 3`)
+                        initScene3();
+                        break;
+                    case 4:
+                        console.log(`case 4`)
+                        initScene4();
+                        break;
+                    default:
+                        console.log(`case default`)
+                        initScene1();
+                }
+            }
+            function initScene1() {
+                //change caption and action paragraphs
+                document.getElementById(`caption`).innerHTML = `Below are home prices based on the ZHVI index from Zillow
+                from roughly 2015 to present day in 2024 across the United States.
+                You can see that home prices have steadily been rising and looks almost linear.
+                There is an acceleration between 2021 and 2023. Also note that increases look cyclical.
+                The first half of each year experiences more growth than the latter half.`;
+
+                document.getElementById(`action`).innerHTML = `Let's take a look at how this looks once we normalize for inflation.`
+                document.getElementById(`actionButton`).innerHTML = `Next`;
+                //init scales for scene 1 scales here
+                let yScale = d3.scaleLinear().domain([2200,1200]).range([0,height]);
+                let xScale = d3.scaleTime().domain(d3.extent(data,function(d) {return new Date(d.Date);}))
+                    .range([0,width]);
+
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width',width/dataLength*.8)
+                    .attr('height',function(d){ return height-yScale(d.ZHVI); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return yScale(d.ZHVI); })
+                    .style("fill", "#69b3a2")
+                    .style("opacity", 0.6)
+                    ;
+                // console.log(xScale(Date(data[12].Date)));
+                //axis
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .call(d3.axisLeft(yScale));
+
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+(margin+height)+')')
+                    .call(d3.axisBottom(xScale));
+                //annotations
+                const anno = [{
+                    note: {
+                        title: "Yearly cycles",
+                        label: 'Prices are stable duting the winter months and rise in the summer',
+                        wrap: 0,
+                    },
+                    x: 200,
+                    y: 480,
+                    dx: 0,
+                    dy: -40,
+                },
+                {
+                    note: {
+                        title: "Sharp Increase",
+                        label: 'Outside of 2021-2023, the last 10 years have seen a consistent rise-and-stabilize pattern',
+                        wrap: 0,
+                    },
+                    x: 620,
+                    y: 350,
+                    dx: 0,
+                    dy: -180,
+                }
+                ];
+                const makeAnno = d3.annotation()
+                    .type(d3.annotationCallout)
+                    .annotations(anno);
+                d3.select('svg').append(`g`).attr('class','annotation-group').call(makeAnno);
+
+                //axes
+                d3.select('svg').append("text")
+                    .attr("class", "x label")
+                    .attr("text-anchor", "end")
+                    .attr("x", (width/2)*1.4)
+                    .attr("y", height+2*margin)
+                    .text("Year");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", 80)
+                    .attr("x", -220)
+                    .attr("transform", "rotate(-90)")
+                    .text("Zillow Home Value Index");
+
+            }
+            function initScene2() {
+                console.log(`this is scene 2`);
+                //change caption and action paragraphs
+                document.getElementById(`caption`).innerHTML = `Okay, now we've taken inflation into account.
+                We know there have been recent stretches of high inflation, so we don't want that to distort our understanding
+                of home value trends.
+                Woah! Looks like accounting for inflation drastically reduces the dramatic climb in home values.
+                Still, the general trends are still present: yearly cycles of values as well as a steep increase starting in 2021.`;
+
+                document.getElementById(`action`).innerHTML = `Now let's take a look at how this correlates with interest rates.`;
+
+                //init scales for scene 2 scales here
+                let yScale = d3.scaleLinear().domain([2200,1200]).range([0,height]);
+                let xScale = d3.scaleTime().domain(d3.extent(data,function(d) {return new Date(d.Date);}))
+                    .range([0,width]);
+
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width',width/dataLength*.8)
+                    .attr('height',function(d){ return height-yScale(d.adjustedZHVI); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return yScale(d.adjustedZHVI); })
+                    .style("fill", "#69b3a2")
+                    .style("opacity", 0.6)
+                    ;
+
+                //axis
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .call(d3.axisLeft(yScale));
+
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+(margin+height)+')')
+                    .call(d3.axisBottom(xScale));
+
+                //annotations
+                const anno = [{
+                    note: {
+                        title: "Yearly cycles",
+                        label: 'Ups and downs are consistent after adjusting by inflation',
+                        wrap: 0,
+                    },
+                    x: 200,
+                    y: 480,
+                    dx: 0,
+                    dy: -40,
+                },
+                {
+                    note: {
+                        title: "Less Sharp",
+                        label: `We see that inflation-adjusted increases really only saw a sharp increase until 2022`,
+                        wrap: 0,
+                    },
+                    x: 620,
+                    y: 430,
+                    dx: 0,
+                    dy: -180,
+                }
+                ];
+
+                const makeAnno = d3.annotation()
+                    .type(d3.annotationCallout)
+                    .annotations(anno);
+                d3.select('svg').append(`g`).attr('class','annotation-group').call(makeAnno);
+
+            //axes
+            d3.select('svg').append("text")
+                    .attr("class", "x label")
+                    .attr("text-anchor", "end")
+                    .attr("x", (width/2)*1.4)
+                    .attr("y", height+2*margin)
+                    .text("Year");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", 80)
+                    .attr("x", -220)
+                    .attr("transform", "rotate(-90)")
+                    .text("Zillow Home Value Index");
+            }
+            function initScene3() {
+                console.log(`this is scene 3`);
+                //change caption and action paragraphs
+                document.getElementById(`caption`).innerHTML = `Let's tighten up the y-axis so we can see changes more clearly.
+                And let's add in interest rates. Generally, we believe that interest rates affect housing prices as it related to mortgages.
+                As interest rates increase, we expect overall mortgage payments to increase, making it more expensive for the average Joe to realize the American Dream.
+                `;
+
+                document.getElementById(`action`).innerHTML = `Interesting.
+                We see that 2020 saw unprecedentedly low interest rates.
+                COVID 19 also impacted the world economy.`;
+
+                //init scales for scene 2 scales here
+                let yScale = d3.scaleLinear().domain([1800,1200]).range([0,height]);
+                let xScale = d3.scaleTime().domain(d3.extent(data,function(d) {return new Date(d.Date);}))
+                    .range([0,width]);
+                let FFRScale = d3.scaleLinear().domain([6,0]).range([0,height]);
+
+
+
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width',width/dataLength*.8)
+                    .attr('height',function(d){ return height-yScale(d.adjustedZHVI); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return yScale(d.adjustedZHVI); })
+                    .style("fill", "#69b3a2")
+                    .style("opacity", 0.6)
+                    ;
+
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width',width/dataLength*.2)
+                    .attr('height',function(d){ return height-FFRScale(d.FFR); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return FFRScale(d.FFR); })
+                    .style("fill", "#404080")
+                    ;
+
+                //axis
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .call(d3.axisLeft(yScale));
+
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+(margin+height)+')')
+                    .call(d3.axisBottom(xScale));
+
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+(3*margin+width)+','+margin+')')
+                    .call(d3.axisRight(FFRScale));
+
+                //annotations
+                const anno = [{
+                    note: {
+                        title: "Interest Rates and COVID 19",
+                        label: 'Unprecedented macroeconomic factors present',
+                        wrap: 0,
+                    },
+                    x: 560,
+                    y: 340,
+                    dx: 90,
+                    dy: -140,
+                }];
+
+                const makeAnno = d3.annotation()
+                    .type(d3.annotationCallout)
+                    .annotations(anno);
+                d3.select('svg').append(`g`).attr('class','annotation-group').call(makeAnno);
+
+                //axes
+                d3.select('svg').append("text")
+                    .attr("class", "x label")
+                    .attr("text-anchor", "end")
+                    .attr("x", (width/2)*1.4)
+                    .attr("y", height+2*margin)
+                    .text("Year");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", 80)
+                    .attr("x", -220)
+                    .attr("transform", "rotate(-90)")
+                    .text("Zillow Home Value Index");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", -80-(width+2.5*margin))
+                    .attr("x", 220+3*margin)
+                    .attr("transform", "rotate(90)")
+                    .text("Federal Funds Rate");
+            }
+            function initScene4() {
+                console.log(`this is scene 4`);
+                //geo dropdown
+                const geoMenu = d3.select('#geoDropdown')
+                    .append('select');
+                geoMenu.selectAll('option')
+                    .data(geoOptions)
+                    .join('option')
+                    .attr('value', function(d,i) {return i;})
+                    .text(d => d);
+
+                geoMenu.on('change', function(event) {
+                    let geoData=data.map(function(d){return d[geoOptions[event.target.value]]});
+                    console.log(geoData);
+                    updateGeo(geoData);
+                    console.log(event.target.value)
+                });
+
+                //change caption and action paragraphs
+                document.getElementById(`caption`).innerHTML = `Finally, we can compare specific US metro areas
+                against US as a whole. For this view, we are going to use the raw ZHVI values supplied by Zillow,
+                rather than adjust the entire dataset for inflation.`;
+                document.getElementById(`action`).innerHTML = `Use the dropdown filter to drill into the area of interest.`;
+                document.getElementById(`actionButton`).innerHTML = `Start Over`;
+                // document.getElementById(`filterTitle`).innerHTML = `Test`;
+
+                //init scales for scene 2 scales here
+                let yScale = d3.scaleLinear().domain([5200,500]).range([0,height]);
+                let xScale = d3.scaleTime().domain(d3.extent(data,function(d) {return new Date(d.Date);}))
+                    .range([0,width]);
+                let FFRScale = d3.scaleLinear().domain([6,0]).range([0,height]);
+
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr('width',width/dataLength*.2)
+                    .attr('height',function(d){ return height-FFRScale(d.FFR); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return FFRScale(d.FFR); })
+                    .style("fill", "#404080")
+                    ;
+
+                //axis
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+3*margin+','+(margin+height)+')')
+                    .call(d3.axisBottom(xScale));
+
+                d3.select('svg').append('g')
+                    .attr('transform','translate('+(3*margin+width)+','+margin+')')
+                    .call(d3.axisRight(FFRScale));
+
+                //axes lables
+                d3.select('svg').append("text")
+                    .attr("class", "x label")
+                    .attr("text-anchor", "end")
+                    .attr("x", (width/2)*1.4)
+                    .attr("y", height+2*margin)
+                    .text("Year");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", 80)
+                    .attr("x", -220)
+                    .attr("transform", "rotate(-90)")
+                    .text("Zillow Home Value Index");
+                d3.select('svg').append("text")
+                    .attr("class", "y label")
+                    .attr("text-anchor", "end")
+                    .attr("y", -80-(width+2.5*margin))
+                    .attr("x", 220+3*margin)
+                    .attr("transform", "rotate(90)")
+                    .text("Federal Funds Rate");
+                //call updateGeo
+                let geoData=data.map(function(d){return d[geoOptions[0]]})
+                updateGeo(geoData);
+            }
+            function updateGeo(geoData){
+                let geoMax = d3.max(geoData, function(d) { return +d;} );
+                let max = d3.max(data, function(d) { return +d.ZHVI;} );
+                let geoMin = d3.min(geoData, function(d) { return +d;} );
+                let min = d3.min(data, function(d) { return +d.ZHVI;} );
+                let scaleMax = Math.max(max,geoMax);
+                let scaleMin = Math.min(min,geoMin);
+                //init scales for scene 2 scales here
+                let yScale = d3.scaleLinear().domain([scaleMax,scaleMin]).range([0,height]);
+                let xScale = d3.scaleTime().domain(d3.extent(data,function(d) {return new Date(d.Date);}))
+                    .range([0,width]);
+
+                d3.select("svg").selectAll(".geo").remove();
+                d3.select("svg").selectAll(".ZHVI").remove();
+                d3.select("svg").selectAll(".yScale").remove();
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(data)
+                    .enter()
+                    .append('rect')
+                    .attr("class", "ZHVI")
+                    .attr('width',width/dataLength*.8)
+                    .attr('height',function(d){ return height-yScale(d.ZHVI); })
+                    .attr('x', function(d,i) { return width/dataLength*(i); })
+                    .attr('y',function(d) {return yScale(d.ZHVI); })
+                    .style("fill", "#69b3a2")
+                    .style("opacity", 0.6)
+                    ;
+                d3.select('svg')
+                    .append('g')
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .selectAll('rect')
+                    .data(geoData)
+                    .enter()
+                    .append('rect')
+                    .attr("class", "geo")
+                    .attr('width',width/dataLength*.2)
+                    .attr('height',function(d){ return height-yScale(d); })
+                    .attr('x', function(d,i) { return width/dataLength*(i)+width/dataLength*.6; })
+                    .attr('y',function(d) {return yScale(d); })
+                    .style("fill", "#ed4134")
+                    ;
+                //y axis redraw
+                d3.select('svg').append('g')
+                    .attr("class", "yScale")
+                    .attr('transform','translate('+3*margin+','+margin+')')
+                    .call(d3.axisLeft(yScale));
+            }
+
+        </script>
+    </body>
+</html>
