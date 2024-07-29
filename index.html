@@ -44,7 +44,7 @@
             let height = 500;
             let width = 750;
             async function init() {
-                data = await d3.csv('/US_homePrices.csv');
+                data = await d3.csv('US_homePrices.csv');
                 dataLength = data.length;
                 geoOptions = data.columns;
                 geoOptions.shift();
